@@ -47,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         state.set(call.data["state"])
         hass.bus.async_fire(EVENT_REPORT)
 
-    await hass.services.async_register(
+    hass.services.async_register(
         DOMAIN,
         SERVICE_SET_HEALTH,
         _handle_set_health,
@@ -73,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL), _check_stale
     )
 
-    hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
@@ -85,5 +85,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         hass.data.pop(DOMAIN, None)
-        await hass.services.async_remove(DOMAIN, SERVICE_SET_HEALTH)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_HEALTH)
     return unloaded
