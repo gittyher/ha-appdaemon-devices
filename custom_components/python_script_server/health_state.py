@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 STATE_OK = "ok"
 STATE_ERROR = "error"
@@ -24,7 +24,7 @@ class HealthState:
 
     @staticmethod
     def _now() -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def set(self, state: str) -> None:
         self._last_state = state

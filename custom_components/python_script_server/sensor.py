@@ -9,12 +9,12 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, EVENT_REPORT, UNIQUE_ID
-from .health_state import HealthState, STATE_OFFLINE
+from .health_state import STATE_OFFLINE, HealthState
 
 
 async def async_setup_entry(
@@ -51,7 +51,7 @@ class PythonScriptServerHealthSensor(SensorEntity):
         )
 
     @callback
-    def _handle_report(self, _event) -> None:
+    def _handle_report(self, _event: Event | None) -> None:
         self._attr_native_value = self._state_store.current()
         report = self._state_store.last_report
         self._attr_extra_state_attributes = {

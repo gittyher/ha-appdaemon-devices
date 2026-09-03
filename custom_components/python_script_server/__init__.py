@@ -7,11 +7,10 @@ Ohne Report innerhalb der Stale-Zeit wird sie auf "offline" umgestellt.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import event as ha_event
@@ -57,7 +56,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Stale-Check: stellt die Entity ohne frischen Report auf "offline" um
     last_published: str | None = None
 
-    async def _check_stale() -> None:
+    # HA ruft die Action mit Local-Time auf; für die Terminierung
+    # (point_in_time erwartet UTC) immer fresh UTC-Now verwenden
+    async def _check_stale(now: datetime) -> None:
         nonlocal last_published
         current = state.current()
         if current != last_published:
@@ -65,12 +66,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.bus.async_fire(EVENT_REPORT)
         store["unsub_stale"] = ha_event.async_track_point_in_time(
             hass,
-            dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL),
             _check_stale,
+            dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL),
         )
 
     store["unsub_stale"] = ha_event.async_track_point_in_time(
-        hass, dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL), _check_stale
+        hass, _check_stale, dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL)
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
