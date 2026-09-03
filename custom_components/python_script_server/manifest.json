@@ -1,0 +1,11 @@
+{
+  "domain": "python_script_server",
+  "name": "PythonScriptServer",
+  "version": "0.1.0",
+  "config_flow": true,
+  "iot_class": "local_push",
+  "loggers": [
+    "python_script_server"
+  ],
+  "codeowners": []
+}

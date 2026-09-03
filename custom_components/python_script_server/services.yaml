@@ -1,0 +1,9 @@
+set_health:
+  fields:
+    state:
+      required: true
+      selector:
+        select:
+          options:
+            - ok
+            - error

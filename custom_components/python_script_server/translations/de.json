@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PythonScriptServer",
+        "description": "Überwacht den PythonScriptServer-Prozess (AppDaemon) über dessen Health-Reports.",
+        "data": {
+          "stale_timeout": "Minuten ohne Report, bevor die Entity auf offline gesetzt wird"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "health": {
+        "name": "Zustand"
+      }
+    }
+  },
+  "services": {
+    "set_health": {
+      "name": "Zustand setzen",
+      "description": "Setzt den Health-Zustand des PythonScriptServer-Prozesses (wird von der AppDaemon-App aufgerufen).",
+      "fields": {
+        "state": {
+          "name": "Zustand",
+          "description": "Aktueller Health-Zustand: ok oder error"
+        }
+      }
+    }
+  }
+}
