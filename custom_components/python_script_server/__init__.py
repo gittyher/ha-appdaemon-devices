@@ -13,9 +13,8 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import event as ha_event
-from homeassistant.services import ServiceCall
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -58,18 +57,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Stale-Check: stellt die Entity ohne frischen Report auf "offline" um
     last_published: str | None = None
 
-    async def _check_stale(now) -> None:
+    async def _check_stale() -> None:
         nonlocal last_published
         current = state.current()
         if current != last_published:
             last_published = current
             hass.bus.async_fire(EVENT_REPORT)
         store["unsub_stale"] = ha_event.async_track_point_in_time(
-            hass, _check_stale, now + timedelta(seconds=STALE_CHECK_INTERVAL)
+            hass,
+            dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL),
+            _check_stale,
         )
 
     store["unsub_stale"] = ha_event.async_track_point_in_time(
-        hass, _check_stale, dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL)
+        hass, dt_util.utcnow() + timedelta(seconds=STALE_CHECK_INTERVAL), _check_stale
     )
 
     hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
