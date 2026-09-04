@@ -37,7 +37,10 @@ class PythonScriptServerHealthSensor(SensorEntity):
     def __init__(self, state: HealthState) -> None:
         self._state_store = state
         self._attr_native_value = STATE_OFFLINE
-        self._attr_extra_state_attributes = {"last_report": None}
+        self._attr_extra_state_attributes = {
+            "last_report": None,
+            "last_report_sent": None,
+        }
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, UNIQUE_ID)},
             name="PythonScriptServer",
@@ -54,8 +57,12 @@ class PythonScriptServerHealthSensor(SensorEntity):
     def _handle_report(self, _event: Event | None) -> None:
         self._attr_native_value = self._state_store.current()
         report = self._state_store.last_report
+        sent_at = self._state_store.last_report_sent_at
         self._attr_extra_state_attributes = {
-            # ISO-Zeitstempel für Templates/Automations (z. B. Stale-Erkennung)
+            # Empfangszeit auf HA (UTC) – Basis der Stale-Erkennung,
+            # ISO-String für Templates/Automations
             "last_report": report.isoformat() if report else None,
+            # Sendezeit des Reporters (AppDaemon-Server, UTC)
+            "last_report_sent": sent_at.isoformat() if sent_at else None,
         }
         self.async_write_ha_state()

@@ -29,6 +29,17 @@ from .const import (
 from .health_state import HealthState
 
 
+def _validate_timestamp(value: Any) -> str:
+    """Validiert einen ISO-8601-Zeitstempel (z. B. vom AppDaemon-Server)."""
+    if not isinstance(value, str):
+        raise vol.Invalid("timestamp muss eine ISO-8601-String sein")
+    try:
+        datetime.fromisoformat(value)
+    except ValueError as err:
+        raise vol.Invalid(f"Ungültiger ISO-8601-Zeitstempel: {value!r}") from err
+    return value
+
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Integration wird nur per Config-Entry eingerichtet (UI)."""
     return True
@@ -43,14 +54,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN] = store
 
     async def _handle_set_health(call: ServiceCall) -> None:
-        state.set(call.data["state"])
+        sent_at: datetime | None = None
+        if (raw := call.data.get("timestamp")) is not None:
+            # Vom Schema bereits validiert (ISO-8601)
+            sent_at = datetime.fromisoformat(raw)
+        state.set(call.data["state"], sent_at)
         hass.bus.async_fire(EVENT_REPORT)
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_HEALTH,
         _handle_set_health,
-        schema=vol.Schema({vol.Required("state"): vol.In(list(VALID_STATES))}),
+        schema=vol.Schema(
+            {
+                vol.Required("state"): vol.In(list(VALID_STATES)),
+                vol.Optional("timestamp"): _validate_timestamp,
+            }
+        ),
     )
 
     # Stale-Check: stellt die Entity ohne frischen Report auf "offline" um
