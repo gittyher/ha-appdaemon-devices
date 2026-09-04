@@ -1,8 +1,10 @@
-"""PythonScriptServer – Device "PythonScriptServer" mit einer Health-Entity.
+"""PythonScriptServer – Device "PythonScriptServer" mit Health- und
+Skript-Versions-Entity.
 
-Die Health-Entity wird von einem Script auf dem AppDaemon-Server
-(PythonScriptServer) gesetzt (Service python_script_server.set_health).
-Ohne Report innerhalb der Stale-Zeit wird sie auf "offline" umgestellt.
+Beide Entities werden von einem Script auf dem AppDaemon-Server
+(PythonScriptServer) per Service python_script_server.set_health gesetzt:
+Health (mit Stale-Check, ohne frischen Report "offline") und die zentrale
+Skript-Version des Reporters (Text-Entity).
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import event as ha_event
 from homeassistant.util import dt as dt_util
 
@@ -50,7 +53,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     state = HealthState(
         timedelta(minutes=entry.data.get(CONF_STALE_TIMEOUT, DEFAULT_STALE_TIMEOUT))
     )
-    store: dict[str, Any] = {"state": state}
+    # "version" = zentrale Skript-Version des Reporters (AppDaemon-Server);
+    # wird mit jedem Report aktualisiert und in der Text-Entity angezeigt.
+    store: dict[str, Any] = {"state": state, "version": None}
     hass.data[DOMAIN] = store
 
     async def _handle_set_health(call: ServiceCall) -> None:
@@ -58,6 +63,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if (raw := call.data.get("timestamp")) is not None:
             # Vom Schema bereits validiert (ISO-8601)
             sent_at = datetime.fromisoformat(raw)
+        if (version := call.data.get("version")) is not None:
+            store["version"] = version
         state.set(call.data["state"], sent_at)
         hass.bus.async_fire(EVENT_REPORT)
 
@@ -69,6 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             {
                 vol.Required("state"): vol.In(list(VALID_STATES)),
                 vol.Optional("timestamp"): _validate_timestamp,
+                vol.Optional("version"): cv.string,
             }
         ),
     )

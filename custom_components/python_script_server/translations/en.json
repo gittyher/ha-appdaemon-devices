@@ -14,6 +14,9 @@
     "sensor": {
       "health": {
         "name": "Health"
+      },
+      "script_version": {
+        "name": "Script Version"
       }
     }
   },

@@ -12,3 +12,8 @@ set_health:
       example: "2026-09-03T12:00:00+00:00"
       selector:
         text:
+    version:
+      required: false
+      example: "0.1.0"
+      selector:
+        text:

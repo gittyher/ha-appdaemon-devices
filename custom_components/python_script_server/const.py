@@ -8,7 +8,6 @@ CONF_STALE_TIMEOUT = "stale_timeout"  # Minuten ohne Report -> "offline"
 
 DOMAIN = "python_script_server"
 NAME = "PythonScriptServer"
-VERSION = "0.1.0"
 
 UNIQUE_ID = "python_script_server"
 DEFAULT_STALE_TIMEOUT = 5  # Minuten
