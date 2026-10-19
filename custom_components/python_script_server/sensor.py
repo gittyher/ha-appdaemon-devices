@@ -83,8 +83,8 @@ class PythonScriptServerVersionSensor(SensorEntity):
     """Zentrale Skript-Version des auf dem AppDaemon-Server laufenden Scripts.
 
     Wird vom Script mit jedem Report gemeldet (Service-Feld `version`);
-    bis zum ersten Report "unknown". Bei jeder Änderung des Scripts muss
-    die Version im Script (SCRIPT_VERSION) erhöht werden.
+    bis zum ersten Report "unknown". Die Version wird beim Deploy automatisch
+    aus der Commit-Distance abgeleitet (install/derive_version.sh).
     """
 
     _attr_has_entity_name = True
