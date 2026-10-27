@@ -17,6 +17,9 @@
       },
       "script_version": {
         "name": "Skript-Version"
+      },
+      "apps": {
+        "name": "Apps"
       }
     }
   },
@@ -28,6 +31,20 @@
         "state": {
           "name": "Zustand",
           "description": "Aktueller Health-Zustand: ok oder error"
+        }
+      }
+    },
+    "set_apps": {
+      "name": "Apps melden",
+      "description": "Meldet die installierten und laufenden Apps des AppDaemon-Servers (wird von der AppDaemon-App aufgerufen).",
+      "fields": {
+        "installed_apps": {
+          "name": "Installierte Apps",
+          "description": "In apps.yaml registrierte Apps"
+        },
+        "running_apps": {
+          "name": "Laufende Apps",
+          "description": "Apps mit aktiver initialize()-Instanz"
         }
       }
     }

@@ -17,3 +17,15 @@ set_health:
       example: "0.1.0"
       selector:
         text:
+set_apps:
+  fields:
+    installed_apps:
+      required: false
+      example: '["aussenlicht", "wandbild"]'
+      selector:
+        object:
+    running_apps:
+      required: false
+      example: '["aussenlicht", "wandbild"]'
+      selector:
+        object:

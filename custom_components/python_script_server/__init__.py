@@ -1,10 +1,12 @@
-"""PythonScriptServer – Device "PythonScriptServer" mit Health- und
-Skript-Versions-Entity.
+"""PythonScriptServer – Device "PythonScriptServer" mit Health-, Skript-
+Versions- und App-Übersichts-Entity.
 
-Beide Entities werden von einem Script auf dem AppDaemon-Server
-(PythonScriptServer) per Service python_script_server.set_health gesetzt:
-Health (mit Stale-Check, ohne frischen Report "offline") und die zentrale
-Skript-Version des Reporters (Text-Entity).
+Die Entities werden von einem Script auf dem AppDaemon-Server
+(PythonScriptServer) per Service gesetzt:
+- python_script_server.set_health: Health (mit Stale-Check, ohne frischen
+  Report "offline") und die zentrale Skript-Version des Reporters.
+- python_script_server.set_apps: die installierten und laufenden Apps
+  (Listen), angezeigt im Apps-Sensor.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from .const import (
     DOMAIN,
     EVENT_REPORT,
     PLATFORMS,
+    SERVICE_SET_APPS,
     SERVICE_SET_HEALTH,
     STALE_CHECK_INTERVAL,
     VALID_STATES,
@@ -55,7 +58,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     # "version" = zentrale Skript-Version des Reporters (AppDaemon-Server);
     # wird mit jedem Report aktualisiert und in der Text-Entity angezeigt.
-    store: dict[str, Any] = {"state": state, "version": None}
+    # "installed_apps"/"running_apps" = App-Übersicht aus set_apps.
+    store: dict[str, Any] = {
+        "state": state,
+        "version": None,
+        "installed_apps": None,
+        "running_apps": None,
+    }
     hass.data[DOMAIN] = store
 
     async def _handle_set_health(call: ServiceCall) -> None:
@@ -77,6 +86,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 vol.Required("state"): vol.In(list(VALID_STATES)),
                 vol.Optional("timestamp"): _validate_timestamp,
                 vol.Optional("version"): cv.string,
+            }
+        ),
+    )
+
+    async def _handle_set_apps(call: ServiceCall) -> None:
+        # Partial-Update: nur mitgegebene Felder überschreiben, damit ein
+        # Report ohne Felder den zuletzt gemeldeten Stand nicht löscht.
+        if (apps := call.data.get("installed_apps")) is not None:
+            store["installed_apps"] = apps
+        if (apps := call.data.get("running_apps")) is not None:
+            store["running_apps"] = apps
+        hass.bus.async_fire(EVENT_REPORT)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_APPS,
+        _handle_set_apps,
+        schema=vol.Schema(
+            {
+                vol.Optional("installed_apps"): [cv.string],
+                vol.Optional("running_apps"): [cv.string],
             }
         ),
     )
@@ -115,4 +145,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unloaded:
         hass.data.pop(DOMAIN, None)
         hass.services.async_remove(DOMAIN, SERVICE_SET_HEALTH)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_APPS)
     return unloaded

@@ -1,8 +1,9 @@
-"""Sensoren des Devices "PythonScriptServer": 'Zustand' (Health) und
-'Skript-Version' (zentrale Version des auf dem Server laufenden Scripts).
+"""Sensoren des Devices "PythonScriptServer": 'Zustand' (Health), 'Skript-
+Version' (zentrale Version des auf dem Server laufenden Scripts) und 'Apps'
+(App-Übersicht: installierte/laufende Apps).
 
 Die Werte kommen per Push vom PythonScriptServer (AppDaemon)
-(Service set_health); das Entity-Polling ist deaktiviert.
+(Service set_health bzw. set_apps); das Entity-Polling ist deaktiviert.
 """
 
 from __future__ import annotations
@@ -28,12 +29,13 @@ DEVICE_INFO = DeviceInfo(
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Erzeugt die Health- und die Skript-Versions-Entity."""
+    """Erzeugt die Health-, die Skript-Versions- und die Apps-Entity."""
     store: dict[str, Any] = hass.data[DOMAIN]
     async_add_entities(
         [
             PythonScriptServerHealthSensor(store["state"]),
             PythonScriptServerVersionSensor(store),
+            PythonScriptServerAppsSensor(store),
         ]
     )
 
@@ -110,4 +112,53 @@ class PythonScriptServerVersionSensor(SensorEntity):
     def _handle_report(self, _event: Event | None) -> None:
         version = self._store.get("version")
         self._attr_native_value = version if version is not None else STATE_UNKNOWN
+        self.async_write_ha_state()
+
+
+class PythonScriptServerAppsSensor(SensorEntity):
+    """App-Übersicht: Zustand = Anzahl laufender Apps; Attribute = Listen.
+
+    Die Werte kommen per Service set_apps vom Reporter (AppDaemon-Server):
+    `installed_apps` = in apps.yaml registrierte Apps, `running_apps` =
+    Apps mit aktiver initialize()-Instanz. `not_running_apps` wird hier
+    berechnet (Differenz). Bis zum ersten set_apps-Report "unknown".
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "apps"
+    _attr_unique_id = f"{UNIQUE_ID}_apps"
+    _attr_icon = "mdi:apps"
+    _attr_should_poll = False
+
+    def __init__(self, store: dict[str, Any]) -> None:
+        self._store = store
+        self._attr_native_value = STATE_UNKNOWN
+        self._attr_extra_state_attributes = {
+            "installed_apps": [],
+            "running_apps": [],
+            "not_running_apps": [],
+        }
+        self._attr_device_info = DEVICE_INFO
+
+    async def async_added_to_hass(self) -> None:
+        # Initialen Wert (ggf. bereits empfangene Reports) einspielen
+        self._handle_report(None)
+        self.async_on_remove(
+            self.hass.bus.async_listen(EVENT_REPORT, self._handle_report)
+        )
+
+    @callback
+    def _handle_report(self, _event: Event | None) -> None:
+        installed = self._store.get("installed_apps")
+        running = self._store.get("running_apps")
+        if installed is None or running is None:
+            self._attr_native_value = STATE_UNKNOWN
+            installed, running = [], []
+        else:
+            self._attr_native_value = len(running)
+        self._attr_extra_state_attributes = {
+            "installed_apps": sorted(installed),
+            "running_apps": sorted(running),
+            "not_running_apps": sorted(set(installed) - set(running)),
+        }
         self.async_write_ha_state()
