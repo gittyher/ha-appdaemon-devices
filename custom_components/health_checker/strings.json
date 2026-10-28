@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HealthChecker",
+        "description": "Monitors the Shelly devices in Home Assistant via their entity availability (reported by the AppDaemon app).",
+        "data": {
+          "stale_timeout": "Minutes without report before the status entity is set to offline"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "devices": {
+        "name": "Devices"
+      },
+      "status": {
+        "name": "Status"
+      }
+    }
+  },
+  "services": {
+    "set_state": {
+      "name": "Set state",
+      "description": "Report the per-device availability and the overall status (called by the AppDaemon app).",
+      "fields": {
+        "devices": {
+          "name": "Devices",
+          "description": "List of devices with name, state (ok/down) and optional since timestamp"
+        },
+        "overall": {
+          "name": "Overall",
+          "description": "Overall status: ok or error"
+        }
+      }
+    }
+  }
+}

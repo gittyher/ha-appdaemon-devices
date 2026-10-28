@@ -1,0 +1,19 @@
+set_state:
+  fields:
+    devices:
+      required: false
+      example: '[{"name": "Garage", "state": "down", "since": "2026-10-28T08:00:00+00:00"}]'
+      selector:
+        object:
+    overall:
+      required: false
+      selector:
+        select:
+          options:
+            - ok
+            - error
+    timestamp:
+      required: false
+      example: "2026-10-28T08:00:00+00:00"
+      selector:
+        text:
