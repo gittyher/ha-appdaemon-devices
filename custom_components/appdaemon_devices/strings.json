@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AppDaemon Devices",
+        "description": "Generic catch-all device for loose switches and information of the AppDaemon project (registered by the AppDaemon app)."
+      }
+    }
+  },
+  "device": {
+    "device_name": {
+      "name": "AppDaemon Devices"
+    }
+  },
+  "services": {
+    "set_switches": {
+      "name": "Set switches",
+      "description": "Register the current switch list (full replacement, called by the AppDaemon app).",
+      "fields": {
+        "switches": {
+          "name": "Switches",
+          "description": "List of switches with key, name and state (on/off/unknown)"
+        }
+      }
+    },
+    "set_switch_state": {
+      "name": "Set switch state",
+      "description": "Update a single switch state (status mirror, called by the AppDaemon app).",
+      "fields": {
+        "key": {
+          "name": "Key",
+          "description": "Switch key"
+        },
+        "state": {
+          "name": "State",
+          "description": "New state: on or off"
+        }
+      }
+    }
+  }
+}
