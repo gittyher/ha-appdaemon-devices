@@ -29,3 +29,24 @@ set_apps:
       example: '["aussenlicht", "wandbild"]'
       selector:
         object:
+set_switches:
+  fields:
+    switches:
+      required: true
+      example: '[{"key": "wandbild", "name": "Wandbild", "state": "on"}]'
+      selector:
+        object:
+set_switch_state:
+  fields:
+    key:
+      required: true
+      example: "wandbild"
+      selector:
+        text:
+    state:
+      required: true
+      selector:
+        select:
+          options:
+            - on
+            - off

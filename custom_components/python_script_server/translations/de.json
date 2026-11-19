@@ -47,6 +47,30 @@
           "description": "Apps mit aktiver initialize()-Instanz"
         }
       }
+    },
+    "set_switches": {
+      "name": "Schalter setzen",
+      "description": "Registriert die aktuelle Schalterliste (vollständiger Ersatz, wird von der AppDaemon-App aufgerufen).",
+      "fields": {
+        "switches": {
+          "name": "Schalter",
+          "description": "Liste der Schalter mit key, name und state (on/off/unknown)"
+        }
+      }
+    },
+    "set_switch_state": {
+      "name": "Schalterzustand setzen",
+      "description": "Aktualisiert einen einzelnen Schalterzustand (Status-Mirror, wird von der AppDaemon-App aufgerufen).",
+      "fields": {
+        "key": {
+          "name": "Schlüssel",
+          "description": "Schalter-Key"
+        },
+        "state": {
+          "name": "Zustand",
+          "description": "Neuer Zustand: on oder off"
+        }
+      }
     }
   }
 }

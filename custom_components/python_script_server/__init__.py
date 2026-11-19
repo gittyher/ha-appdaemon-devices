@@ -1,5 +1,5 @@
 """PythonScriptServer – Device "PythonScriptServer" mit Health-, Skript-
-Versions- und App-Übersichts-Entity.
+Versions-, App-Übersichts- und Sammel-Schalter-Entities.
 
 Die Entities werden von einem Script auf dem AppDaemon-Server
 (PythonScriptServer) per Service gesetzt:
@@ -7,10 +7,14 @@ Die Entities werden von einem Script auf dem AppDaemon-Server
   Report "offline") und die zentrale Skript-Version des Reporters.
 - python_script_server.set_apps: die installierten und laufenden Apps
   (Listen), angezeigt im Apps-Sensor.
+- python_script_server.set_switches / set_switch_state: Sammel-Schalter
+  (Feature-Toggles aus apps.yaml, Status-Mirror) als Switch-Entities unter
+  demselben Gerät.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -26,13 +30,21 @@ from .const import (
     DEFAULT_STALE_TIMEOUT,
     DOMAIN,
     EVENT_REPORT,
+    EVENT_SWITCH_STATE,
+    EVENT_SWITCHES,
     PLATFORMS,
     SERVICE_SET_APPS,
     SERVICE_SET_HEALTH,
+    SERVICE_SET_SWITCH_STATE,
+    SERVICE_SET_SWITCHES,
     STALE_CHECK_INTERVAL,
+    VALID_REGISTRATION_STATES,
     VALID_STATES,
+    VALID_UPDATE_STATES,
 )
 from .health_state import HealthState
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _validate_timestamp(value: Any) -> str:
@@ -44,6 +56,16 @@ def _validate_timestamp(value: Any) -> str:
     except ValueError as err:
         raise vol.Invalid(f"Ungültiger ISO-8601-Zeitstempel: {value!r}") from err
     return value
+
+
+def _validate_switch_key(value: Any) -> str:
+    """Validiert den Schalter-Key (wird als Entity-ID-Suffix verwendet)."""
+    key = cv.string(value)
+    if not key or not all(c.isalnum() or c == "_" for c in key):
+        raise vol.Invalid(
+            "key muss aus [a-z0-9_]+ bestehen (nur Buchstaben, Ziffern, Unterstrich)"
+        )
+    return key
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
@@ -64,6 +86,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "version": None,
         "installed_apps": None,
         "running_apps": None,
+        "switches": {},  # key -> Anzeigename
+        "switch_states": {},  # key -> "on"|"off"|"unknown"
     }
     hass.data[DOMAIN] = store
 
@@ -111,6 +135,61 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
 
+    async def _handle_set_switches(call: ServiceCall) -> None:
+        # Full-List-Replacement: die Liste ist die Source of Truth. Nicht mehr
+        # gemeldete Schalter werden aus dem Store entfernt (die Switch-Platform
+        # räumt die Entities auf); neue/geänderte werden übernommen.
+        new_registry: dict[str, str] = {}
+        new_states: dict[str, str] = {}
+        for sw in call.data["switches"]:
+            new_registry[sw["key"]] = sw["name"]
+            new_states[sw["key"]] = sw["state"]
+        store["switches"] = new_registry
+        store["switch_states"] = new_states
+        hass.bus.async_fire(EVENT_SWITCHES)
+        hass.bus.async_fire(EVENT_SWITCH_STATE)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_SWITCHES,
+        _handle_set_switches,
+        schema=vol.Schema(
+            {
+                vol.Required("switches"): [
+                    vol.Schema(
+                        {
+                            vol.Required("key"): _validate_switch_key,
+                            vol.Required("name"): cv.string,
+                            vol.Required("state"): vol.In(VALID_REGISTRATION_STATES),
+                        }
+                    )
+                ]
+            }
+        ),
+    )
+
+    async def _handle_set_switch_state(call: ServiceCall) -> None:
+        key = call.data["key"]
+        if key not in store["switches"]:
+            _LOGGER.warning(
+                "set_switch_state für unbekannten Schalter %r ignoriert", key
+            )
+            return
+        store["switch_states"][key] = call.data["state"]
+        hass.bus.async_fire(EVENT_SWITCH_STATE)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_SWITCH_STATE,
+        _handle_set_switch_state,
+        schema=vol.Schema(
+            {
+                vol.Required("key"): _validate_switch_key,
+                vol.Required("state"): vol.In(VALID_UPDATE_STATES),
+            }
+        ),
+    )
+
     # Stale-Check: stellt die Entity ohne frischen Report auf "offline" um
     last_published: str | None = None
 
@@ -146,4 +225,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.pop(DOMAIN, None)
         hass.services.async_remove(DOMAIN, SERVICE_SET_HEALTH)
         hass.services.async_remove(DOMAIN, SERVICE_SET_APPS)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_SWITCHES)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_SWITCH_STATE)
     return unloaded
